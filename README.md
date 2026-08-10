@@ -1,0 +1,159 @@
+# OpsPilot
+
+OpsPilot is a Phase 1 boilerplate for an on-call log analysis application focused on a single log file. The design is intentionally narrow: it accepts a single `.log` or `.txt` file and produces a structured, actionable report for engineers investigating an unfamiliar system.
+
+## Goals
+
+- Analyze one log file at a time
+- Extract useful operational facts from raw text logs
+- Highlight important events, errors, warnings, and recurring patterns
+- Produce a concise report suitable for fast incident triage
+- Keep the architecture modular and extensible for future phases
+
+## Scope for Phase 1
+
+This project deliberately does not implement:
+
+- multi-file analysis
+- GitHub or Confluence integration
+- RCA retrieval
+- alert correlation
+- autonomous debugging
+- distributed tracing ingestion
+- multi-agent orchestration
+
+Instead, it focuses on the core pipeline:
+
+File Loader -> Parser -> Analyzer -> Pattern Detector -> Statistics Generator -> Prompt Builder -> LLM -> Structured Report
+
+## Recommended architecture
+
+The project uses a layered design built around a small number of single-responsibility components:
+
+1. File Loader
+   - Validates file type and size
+   - Reads the content from disk
+
+2. Parser
+   - Splits text into log entries
+   - Extracts timestamps, levels, request IDs, component names, and threads
+
+3. Log Analyzer
+   - Builds the overview, timeline, and summary sections
+   - Groups errors and warnings by similarity
+
+4. Pattern Detector
+   - Detects retries, timeouts, reconnect loops, and other operational patterns
+
+5. Statistics Generator
+   - Produces counts and aggregations for overview and reporting
+
+6. LLM Prompt Builder
+   - Converts structured report data into a compact prompt for an LLM
+
+7. LLM Client
+   - Abstracts provider-specific logic behind a simple interface
+
+8. Structured Report Generator
+   - Combines all findings into a final, consistent JSON-like report
+
+## Directory structure
+
+```text
+opspilot/
+├── README.md
+├── pyproject.toml
+├── .gitignore
+├── src/
+│   └── opspilot/
+│       ├── __init__.py
+│       ├── cli.py
+│       ├── config.py
+│       ├── app.py
+│       ├── domain/
+│       │   └── models.py
+│       ├── loaders/
+│       │   └── file_loader.py
+│       ├── parsers/
+│       │   └── log_parser.py
+│       ├── analyzers/
+│       │   └── log_analyzer.py
+│       ├── detectors/
+│       │   └── pattern_detector.py
+│       ├── stats/
+│       │   └── statistics_generator.py
+│       ├── llm/
+│       │   ├── llm_client.py
+│       │   └── prompt_builder.py
+│       ├── reports/
+│       │   └── report_generator.py
+│       └── services/
+│           └── analysis_service.py
+├── tests/
+│   ├── test_log_parser.py
+│   └── test_analysis_service.py
+└── sample_logs/
+    └── sample.log
+```
+
+## Technology choices
+
+- Python: very strong ecosystem for log parsing, structured data handling, and LLM integration
+- Dataclasses and type hints: simple, readable, and easily testable models
+- Pydantic: helps with validation and extensibility when more structured metadata is added later
+- argparse: lightweight CLI for local analysis without introducing a web framework prematurely
+- pytest: minimal and familiar testing for a modular pipeline
+
+## Data flow
+
+1. The user passes a single file to the CLI.
+2. The file loader validates the extension and size.
+3. The parser converts raw lines into structured `LogEntry` objects.
+4. The analyzer extracts overview metadata, errors, warnings, and a timeline.
+5. The pattern detector checks for repeated failure behavior and operational anomalies.
+6. A prompt builder turns these findings into a compact LLM task.
+7. An LLM client may enrich or validate the final summary.
+8. Report generation returns a structured, JSON-like object for the user.
+
+## Core interfaces and classes
+
+- `FileLoader`: loads and validates the input file
+- `LogParser`: converts lines into `LogEntry`
+- `StatisticsGenerator`: computes aggregate stats
+- `LogAnalyzer`: builds the structured findings
+- `PatternDetector`: identifies patterns and anomalies
+- `PromptBuilder`: prepares LLM input
+- `LLMClient`: provider abstraction
+- `AnalysisService`: orchestrates the pipeline
+- `StructuredReport`: final output schema
+
+## Implementation plan
+
+### Phase 1 goals
+
+- Accept a single log file
+- Parse common log patterns
+- Detect major events and clusters
+- Produce a usable structured report
+- Keep modules independent and easy to extend
+
+### Step-by-step roadmap
+
+1. Build the project skeleton and package layout.
+2. Add file validation and log parsing.
+3. Create statistics and overview generation.
+4. Add anomaly and pattern heuristics.
+5. Add report generation and CLI entrypoints.
+6. Hook in a prompt builder and LLM client abstraction.
+7. Validate with focused tests on parsing and analysis.
+
+## Quick start
+
+```bash
+python -m venv .venv
+source .venv/bin/activate
+pip install -e .[dev]
+python -m opspilot.cli /path/to/application.log
+```
+
+This is intentionally a thin foundation for future expansion, not a complete autonomous investigation system.
