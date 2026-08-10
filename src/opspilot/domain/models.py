@@ -5,7 +5,20 @@ from datetime import datetime
 from typing import Any
 
 
-@dataclass(slots=True)
+class AnalysisReport(dict):
+    """Dictionary-like report that also supports attribute access."""
+
+    def __getattr__(self, name: str):
+        try:
+            return self[name]
+        except KeyError as exc:
+            raise AttributeError(name) from exc
+
+    def __setattr__(self, name: str, value: Any) -> None:
+        self[name] = value
+
+
+@dataclass
 class LogEntry:
     """Single parsed log line."""
 
@@ -21,7 +34,7 @@ class LogEntry:
     metadata: dict[str, Any] = field(default_factory=dict)
 
 
-@dataclass(slots=True)
+@dataclass
 class ErrorGroup:
     """Grouped repeated error pattern."""
 
@@ -32,7 +45,7 @@ class ErrorGroup:
     short_explanation: str = ""
 
 
-@dataclass(slots=True)
+@dataclass
 class WarningGroup:
     """Grouped repeated warning pattern."""
 
@@ -43,7 +56,7 @@ class WarningGroup:
     short_explanation: str = ""
 
 
-@dataclass(slots=True)
+@dataclass
 class TimelineEvent:
     """Key event in a sequence."""
 
@@ -52,7 +65,7 @@ class TimelineEvent:
     source: str | None = None
 
 
-@dataclass(slots=True)
+@dataclass
 class AnalysisOverview:
     """Summary of the log file."""
 
@@ -64,7 +77,7 @@ class AnalysisOverview:
     thread_names: list[str] = field(default_factory=list)
 
 
-@dataclass(slots=True)
+@dataclass
 class StructuredReport:
     """Final output contract for the log analysis report."""
 

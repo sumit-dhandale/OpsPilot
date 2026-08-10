@@ -7,7 +7,7 @@ name = "opspilot"
 version = "0.1.0"
 description = "Boilerplate for a single-file on-call log analysis agent"
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.8"
 dependencies = [
     "pydantic>=2.7,<3.0",
 ]

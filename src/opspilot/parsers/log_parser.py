@@ -107,7 +107,22 @@ class LogParser:
         return None
 
     def _clean_message(self, line: str) -> str:
-        cleaned = re.sub(r"^\[[^\]]+\]\s*", "", line)
-        cleaned = re.sub(r"^\w+\s+\w+\s+\d+\s+\d{2}:\d{2}:\d{2}\s+[^\s]+\s+", "", cleaned)
+        cleaned = line.strip()
+
+        timestamp_match = re.match(
+            r"^(?P<ts>\d{4}[-/]\d{2}[-/]\d{2}[ T]\d{2}:\d{2}:\d{2}(?:,\d+)?(?:\s*Z)?)(?:\s+)?",
+            cleaned,
+        )
+        if timestamp_match:
+            cleaned = cleaned[timestamp_match.end():].strip()
+
+        cleaned = re.sub(
+            r"^(?:\[[^\]]+\]\s*)?(?:[A-Z_]+\s+)?(?:DEBUG|INFO|WARN|WARNING|ERROR|CRITICAL|FATAL)\s*[:\-]?\s*",
+            "",
+            cleaned,
+            flags=re.IGNORECASE,
+        )
+
+        cleaned = re.sub(r"^\[[^\]]+\]\s*", "", cleaned)
         cleaned = re.sub(r"\s+\b(DEBUG|INFO|WARN|WARNING|ERROR|CRITICAL|FATAL)\b.*$", "", cleaned, flags=re.IGNORECASE)
         return cleaned.strip()
