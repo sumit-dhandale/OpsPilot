@@ -3,13 +3,14 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from opspilot.analyzers.llm_analyzer import LLMAnalyzer
 from opspilot.analyzers.static_fallback_analyzer import StaticFallbackAnalyzer
 from opspilot.domain.models import LogEvidenceBundle
-from opspilot.llm.llm_client import LLMClient
+from opspilot.evidence.builder import EvidenceBuilder
+from opspilot.factory import build_log_analysis_agent
+from opspilot.llm.client import LLMClient
 from opspilot.parsers.log_parser import LogParser
-from opspilot.services.analysis_service import AnalysisService
-from opspilot.services.evidence_builder import EvidenceBuilder
-from opspilot.services.llm_analysis_engine import LLMAnalysisEngine
+from opspilot.config import Settings
 
 
 class MockLLMClient(LLMClient):
@@ -82,7 +83,8 @@ class AnalysisServiceTests(unittest.TestCase):
 
     def test_static_fallback_generates_full_report(self):
         with tempfile.TemporaryDirectory() as tmp_dir:
-            report = AnalysisService(disable_llm=True).analyze_file(self._write_log(tmp_dir))
+            agent = build_log_analysis_agent(disable_llm=True)
+            report = agent.analyze_file(self._write_log(tmp_dir)).to_output_dict()
 
             self.assertEqual(report["analysis_source"], "static_fallback")
             self.assertTrue(report["executive_summary"])
@@ -95,11 +97,10 @@ class AnalysisServiceTests(unittest.TestCase):
 
     def test_llm_path_is_primary_when_client_available(self):
         with tempfile.TemporaryDirectory() as tmp_dir:
-            service = AnalysisService(
-                llm_client=MockLLMClient(),
-                llm_engine=LLMAnalysisEngine(llm_client=MockLLMClient()),
-            )
-            report = service.analyze_file(self._write_log(tmp_dir))
+            settings = Settings(openai_api_key="test-key")
+            agent = build_log_analysis_agent(settings=settings, disable_llm=False)
+            agent._llm_analyzer = LLMAnalyzer(llm_client=MockLLMClient())
+            report = agent.analyze_file(self._write_log(tmp_dir)).to_output_dict()
 
             self.assertEqual(report["analysis_source"], "llm")
             self.assertIn("database timeout", report["executive_summary"].lower())
@@ -107,14 +108,15 @@ class AnalysisServiceTests(unittest.TestCase):
     def test_llm_failure_falls_back_to_static(self):
         class FailingLLMClient(LLMClient):
             def generate(self, prompt: str) -> str:
-                raise RuntimeError("LLM unavailable")
+                from opspilot.exceptions import LLMError
+
+                raise LLMError("LLM unavailable")
 
         with tempfile.TemporaryDirectory() as tmp_dir:
-            service = AnalysisService(
-                llm_client=FailingLLMClient(),
-                llm_engine=LLMAnalysisEngine(llm_client=FailingLLMClient()),
-            )
-            report = service.analyze_file(self._write_log(tmp_dir))
+            settings = Settings(openai_api_key="test-key")
+            agent = build_log_analysis_agent(settings=settings, disable_llm=False)
+            agent._llm_analyzer = LLMAnalyzer(llm_client=FailingLLMClient())
+            report = agent.analyze_file(self._write_log(tmp_dir)).to_output_dict()
 
             self.assertEqual(report["analysis_source"], "static_fallback")
             self.assertIn("llm_error", report)
@@ -122,7 +124,7 @@ class AnalysisServiceTests(unittest.TestCase):
 
     def test_evidence_builder_does_not_include_conclusions(self):
         entries = LogParser().parse(self.SAMPLE_LOG)
-        evidence = EvidenceBuilder().build(entries)
+        evidence = EvidenceBuilder(Settings()).build(entries)
 
         self.assertEqual(evidence.total_lines, 3)
         self.assertTrue(evidence.error_lines)
@@ -131,7 +133,7 @@ class AnalysisServiceTests(unittest.TestCase):
 
     def test_static_analyzer_is_separate_from_evidence_builder(self):
         entries = LogParser().parse(self.SAMPLE_LOG)
-        evidence = EvidenceBuilder().build(entries)
+        evidence = EvidenceBuilder(Settings()).build(entries)
         static_report = StaticFallbackAnalyzer().analyze(entries)
 
         self.assertIsInstance(evidence, LogEvidenceBundle)

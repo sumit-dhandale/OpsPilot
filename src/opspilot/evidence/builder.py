@@ -1,37 +1,39 @@
+"""Evidence preparation for LLM analysis."""
+
 from __future__ import annotations
 
-from opspilot.config import DEFAULT_SETTINGS
+from opspilot.config import Settings
 from opspilot.domain.models import LogEntry, LogEvidenceBundle
 from opspilot.stats.statistics_generator import StatisticsGenerator
+
+LIFECYCLE_KEYWORDS = (
+    "start",
+    "started",
+    "shutdown",
+    "stop",
+    "connect",
+    "connected",
+    "ready",
+    "listen",
+    "deploy",
+    "config",
+    "initialized",
+    "bootstrap",
+)
 
 
 class EvidenceBuilder:
     """Builds factual evidence for LLM input without producing analysis conclusions."""
 
-    LIFECYCLE_KEYWORDS = (
-        "start",
-        "started",
-        "shutdown",
-        "stop",
-        "connect",
-        "connected",
-        "ready",
-        "listen",
-        "deploy",
-        "config",
-        "initialized",
-        "bootstrap",
-    )
-
     def __init__(
         self,
+        settings: Settings,
         statistics_generator: StatisticsGenerator | None = None,
-        max_sample_lines: int | None = None,
-        max_level_lines: int | None = None,
     ) -> None:
+        self.settings = settings
         self.statistics_generator = statistics_generator or StatisticsGenerator()
-        self.max_sample_lines = max_sample_lines or DEFAULT_SETTINGS.max_evidence_lines
-        self.max_level_lines = max_level_lines or DEFAULT_SETTINGS.max_level_evidence_lines
+        self.max_sample_lines = settings.max_evidence_lines
+        self.max_level_lines = settings.max_level_evidence_lines
 
     def build(self, entries: list[LogEntry]) -> LogEvidenceBundle:
         statistics = self.statistics_generator.generate(entries)
@@ -68,7 +70,7 @@ class EvidenceBuilder:
         lifecycle: list[str] = []
         for entry in entries:
             message = entry.message.lower()
-            if any(keyword in message for keyword in self.LIFECYCLE_KEYWORDS):
+            if any(keyword in message for keyword in LIFECYCLE_KEYWORDS):
                 lifecycle.append(self._format_line(entry))
         return lifecycle[:self.max_level_lines]
 

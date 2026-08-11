@@ -1,12 +1,24 @@
 from __future__ import annotations
 
-from opspilot.domain.models import StructuredReport
+from opspilot.domain.models import AnalysisOverview, LikelyRootCause, StructuredReport
 
 
 class ReportGenerator:
     """Builds the final report object from analyzer output."""
 
-    def generate(self, executive_summary: str, overview: object, timeline: list, error_analysis: list, warning_analysis: list, pattern_detection: list[str], anomalies: list[str], likely_root_cause: dict[str, list[str]], recommendations: list[str], interesting_log_snippets: list[str]) -> StructuredReport:
+    def generate(
+        self,
+        executive_summary: str,
+        overview: AnalysisOverview,
+        timeline: list,
+        error_analysis: list,
+        warning_analysis: list,
+        pattern_detection: list[str],
+        anomalies: list[str],
+        likely_root_cause: LikelyRootCause,
+        recommendations: list[str],
+        interesting_log_snippets: list[str],
+    ) -> StructuredReport:
         return StructuredReport(
             executive_summary=executive_summary,
             log_overview=overview,

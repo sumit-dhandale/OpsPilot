@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from opspilot.analyzers.log_analyzer import LogAnalyzer
 from opspilot.detectors.pattern_detector import PatternDetector
-from opspilot.domain.models import LogEntry, StructuredReport
+from opspilot.domain.models import LikelyRootCause, LogEntry, StructuredReport
 from opspilot.reports.report_generator import ReportGenerator
 from opspilot.stats.statistics_generator import StatisticsGenerator
 
@@ -87,7 +87,7 @@ class StaticFallbackAnalyzer:
         error_analysis: list,
         patterns: list[str],
         anomalies: list[str],
-    ) -> dict[str, list[str]]:
+    ) -> LikelyRootCause:
         observed_facts: list[str] = []
         possible_causes: list[str] = []
         assumptions: list[str] = []
@@ -116,11 +116,11 @@ class StaticFallbackAnalyzer:
         if not observed_facts:
             assumptions.append("No strong failure signals were detected; health assessment is based on limited evidence.")
 
-        return {
-            "observed_facts": observed_facts,
-            "possible_causes": possible_causes,
-            "assumptions": assumptions,
-        }
+        return LikelyRootCause(
+            observed_facts=observed_facts,
+            possible_causes=possible_causes,
+            assumptions=assumptions,
+        )
 
     def _build_recommendations(
         self,
