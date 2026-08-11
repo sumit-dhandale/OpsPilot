@@ -92,9 +92,10 @@ class LogAnalyzer:
         return events[:limit]
 
     def _build_error_groups(self, entries: list[LogEntry]) -> list[ErrorGroup]:
+        error_levels = {"ERROR", "CRITICAL", "FATAL"}
         groups: dict[str, list[LogEntry]] = {}
         for entry in entries:
-            if entry.level == "ERROR":
+            if entry.level in error_levels:
                 key = entry.message or "unknown_error"
                 groups.setdefault(key, []).append(entry)
 

@@ -1,26 +1,29 @@
 from __future__ import annotations
 
-from opspilot.domain.models import StructuredReport
+import json
+
+from opspilot.domain.models import LogEvidenceBundle, StructuredReport
+from opspilot.llm.prompts import LOG_ANALYSIS_RULES
+from opspilot.llm.schemas import STRUCTURED_REPORT_SCHEMA
 
 
 class PromptBuilder:
-    """Builds a compact prompt for an LLM to refine a structured report."""
+    """Builds LLM prompts for primary log analysis."""
 
-    def build(self, report: StructuredReport) -> str:
-        parts = [
-            "You are analyzing a single log file for an on-call engineer.",
-            "Produce a concise and actionable investigation summary with technical precision.",
-            "Use only evidence from the log entries and avoid speculation.",
-            "",
-            f"Executive Summary: {report.executive_summary}",
-            f"Log Overview: {report.log_overview}",
-            f"Timeline: {report.timeline}",
-            f"Error Analysis: {report.error_analysis}",
-            f"Warning Analysis: {report.warning_analysis}",
-            f"Pattern Detection: {report.pattern_detection}",
-            f"Anomalies: {report.anomalies}",
-            f"Likely Root Cause: {report.likely_root_cause}",
-            f"Recommendations: {report.recommendations}",
-            f"Interesting Snippets: {report.interesting_log_snippets}",
-        ]
-        return "\n".join(parts)
+    def build_analysis_prompt(self, evidence: LogEvidenceBundle) -> str:
+        evidence_payload = evidence.model_dump()
+
+        return (
+            "You are an on-call log analysis agent.\n"
+            "Analyze ONLY the evidence below and produce a structured incident report.\n"
+            f"{LOG_ANALYSIS_RULES}\n\n"
+            f"JSON schema:\n{json.dumps(STRUCTURED_REPORT_SCHEMA, indent=2)}\n\n"
+            f"Evidence bundle:\n{json.dumps(evidence_payload, indent=2)}"
+        )
+
+    def build_refinement_prompt(self, report: StructuredReport) -> str:
+        return (
+            "Refine this structured log analysis report for clarity and actionability. "
+            "Return valid JSON with the same schema.\n"
+            f"Report:\n{json.dumps(report.model_dump(), indent=2)}"
+        )

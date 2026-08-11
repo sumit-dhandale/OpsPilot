@@ -1,26 +1,17 @@
+"""Domain models and report schemas."""
+
 from __future__ import annotations
 
-from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any
+from typing import Any, Literal
+
+from pydantic import BaseModel, ConfigDict, Field
 
 
-class AnalysisReport(dict):
-    """Dictionary-like report that also supports attribute access."""
-
-    def __getattr__(self, name: str):
-        try:
-            return self[name]
-        except KeyError as exc:
-            raise AttributeError(name) from exc
-
-    def __setattr__(self, name: str, value: Any) -> None:
-        self[name] = value
-
-
-@dataclass
-class LogEntry:
+class LogEntry(BaseModel):
     """Single parsed log line."""
+
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
     raw: str
     line_number: int
@@ -31,13 +22,10 @@ class LogEntry:
     thread_name: str | None = None
     component: str | None = None
     request_id: str | None = None
-    metadata: dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = Field(default_factory=dict)
 
 
-@dataclass
-class ErrorGroup:
-    """Grouped repeated error pattern."""
-
+class ErrorGroup(BaseModel):
     error_type: str
     occurrence_count: int
     first_occurrence: str | None = None
@@ -45,10 +33,7 @@ class ErrorGroup:
     short_explanation: str = ""
 
 
-@dataclass
-class WarningGroup:
-    """Grouped repeated warning pattern."""
-
+class WarningGroup(BaseModel):
     warning_type: str
     occurrence_count: int
     first_occurrence: str | None = None
@@ -56,38 +41,67 @@ class WarningGroup:
     short_explanation: str = ""
 
 
-@dataclass
-class TimelineEvent:
-    """Key event in a sequence."""
-
-    timestamp: str | None
+class TimelineEvent(BaseModel):
+    timestamp: str | None = None
     message: str
     source: str | None = None
 
 
-@dataclass
-class AnalysisOverview:
-    """Summary of the log file."""
-
+class AnalysisOverview(BaseModel):
     time_range: str | None = None
     total_lines_processed: int = 0
-    log_levels_observed: list[str] = field(default_factory=list)
-    major_components: list[str] = field(default_factory=list)
-    request_identifiers: list[str] = field(default_factory=list)
-    thread_names: list[str] = field(default_factory=list)
+    log_levels_observed: list[str] = Field(default_factory=list)
+    major_components: list[str] = Field(default_factory=list)
+    request_identifiers: list[str] = Field(default_factory=list)
+    thread_names: list[str] = Field(default_factory=list)
 
 
-@dataclass
-class StructuredReport:
-    """Final output contract for the log analysis report."""
+class LikelyRootCause(BaseModel):
+    observed_facts: list[str] = Field(default_factory=list)
+    possible_causes: list[str] = Field(default_factory=list)
+    assumptions: list[str] = Field(default_factory=list)
+
+
+class StructuredReport(BaseModel):
+    """Final output contract for log analysis."""
 
     executive_summary: str
     log_overview: AnalysisOverview
-    timeline: list[TimelineEvent]
-    error_analysis: list[ErrorGroup]
-    warning_analysis: list[WarningGroup]
-    pattern_detection: list[str]
-    anomalies: list[str]
-    likely_root_cause: dict[str, list[str]]
-    recommendations: list[str]
-    interesting_log_snippets: list[str]
+    timeline: list[TimelineEvent] = Field(default_factory=list)
+    error_analysis: list[ErrorGroup] = Field(default_factory=list)
+    warning_analysis: list[WarningGroup] = Field(default_factory=list)
+    pattern_detection: list[str] = Field(default_factory=list)
+    anomalies: list[str] = Field(default_factory=list)
+    likely_root_cause: LikelyRootCause = Field(default_factory=LikelyRootCause)
+    recommendations: list[str] = Field(default_factory=list)
+    interesting_log_snippets: list[str] = Field(default_factory=list)
+
+
+class LogEvidenceBundle(BaseModel):
+    """Factual evidence prepared for LLM analysis."""
+
+    total_lines: int
+    time_range: str | None = None
+    statistics: dict[str, Any] = Field(default_factory=dict)
+    sample_lines: list[str] = Field(default_factory=list)
+    error_lines: list[str] = Field(default_factory=list)
+    warning_lines: list[str] = Field(default_factory=list)
+    lifecycle_lines: list[str] = Field(default_factory=list)
+
+
+AnalysisSource = Literal["llm", "static_fallback"]
+
+
+class AnalysisResult(BaseModel):
+    """Analysis output with explicit source attribution."""
+
+    report: StructuredReport
+    analysis_source: AnalysisSource
+    llm_error: str | None = None
+
+    def to_output_dict(self) -> dict[str, Any]:
+        payload = self.report.model_dump()
+        payload["analysis_source"] = self.analysis_source
+        if self.llm_error:
+            payload["llm_error"] = self.llm_error
+        return payload
