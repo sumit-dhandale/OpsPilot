@@ -4,7 +4,8 @@ __all__ = [
     "AnalysisService",
     "LogEntry",
     "StructuredReport",
+    "AnalysisResult",
 ]
 
-from .domain.models import LogEntry, StructuredReport
+from .domain.models import AnalysisResult, LogEntry, StructuredReport
 from .services.analysis_service import AnalysisService

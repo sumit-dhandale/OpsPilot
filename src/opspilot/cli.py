@@ -7,10 +7,14 @@ from opspilot.services.analysis_service import AnalysisService
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Analyze a single code or log file for quick engineering insight.")
-    parser.add_argument("file_path", help="Path to the file to inspect.")
-    parser.add_argument("--model", default=None, help="LLM model name to use when an API key is available.")
-    parser.add_argument("--llm-off", action="store_true", help="Disable LLM enrichment and rely only on local analysis.")
+    parser = argparse.ArgumentParser(description="Analyze a single log file with LLM-first incident triage.")
+    parser.add_argument("file_path", help="Path to the .log or .txt file to analyze.")
+    parser.add_argument("--model", default=None, help="LLM model name when OPENAI_API_KEY is set.")
+    parser.add_argument(
+        "--llm-off",
+        action="store_true",
+        help="Skip LLM analysis and use static heuristic fallback only.",
+    )
     args = parser.parse_args()
 
     service = AnalysisService(model_name=args.model, disable_llm=args.llm_off)

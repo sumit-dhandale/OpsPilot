@@ -1,21 +1,8 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field, is_dataclass
 from datetime import datetime
-from typing import Any
-
-
-class AnalysisReport(dict):
-    """Dictionary-like report that also supports attribute access."""
-
-    def __getattr__(self, name: str):
-        try:
-            return self[name]
-        except KeyError as exc:
-            raise AttributeError(name) from exc
-
-    def __setattr__(self, name: str, value: Any) -> None:
-        self[name] = value
+from typing import Any, Literal
 
 
 @dataclass
@@ -91,3 +78,48 @@ class StructuredReport:
     likely_root_cause: dict[str, list[str]]
     recommendations: list[str]
     interesting_log_snippets: list[str]
+
+
+@dataclass
+class LogEvidenceBundle:
+    """Compact, factual evidence prepared for LLM analysis (not conclusions)."""
+
+    total_lines: int
+    time_range: str | None
+    statistics: dict[str, Any]
+    sample_lines: list[str]
+    error_lines: list[str]
+    warning_lines: list[str]
+    lifecycle_lines: list[str]
+
+
+AnalysisSource = Literal["llm", "static_fallback"]
+
+
+@dataclass
+class AnalysisResult:
+    """Analysis output with explicit source attribution."""
+
+    report: StructuredReport
+    analysis_source: AnalysisSource
+    llm_error: str | None = None
+
+
+def to_serializable(value: Any) -> Any:
+    if is_dataclass(value):
+        return {key: to_serializable(item) for key, item in asdict(value).items()}
+    if isinstance(value, datetime):
+        return value.isoformat()
+    if isinstance(value, list):
+        return [to_serializable(item) for item in value]
+    if isinstance(value, dict):
+        return {key: to_serializable(item) for key, item in value.items()}
+    return value
+
+
+def analysis_result_to_dict(result: AnalysisResult) -> dict[str, Any]:
+    payload = to_serializable(result.report)
+    payload["analysis_source"] = result.analysis_source
+    if result.llm_error:
+        payload["llm_error"] = result.llm_error
+    return payload
