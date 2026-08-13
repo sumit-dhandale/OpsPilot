@@ -1,0 +1,6 @@
+2024-01-01 10:00:00 INFO Application started
+2024-01-01 10:00:02 INFO Database connected
+2024-01-01 10:00:05 WARN Slow response observed
+2024-01-01 10:00:10 ERROR Database connection timeout
+2024-01-01 10:00:10 ERROR Database connection timeout
+2024-01-01 10:00:15 INFO Shutdown initiated
