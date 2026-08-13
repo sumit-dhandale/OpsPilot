@@ -10,11 +10,11 @@ class FileLoader:
     """Loads and validates a single log file."""
 
     def __init__(self, settings: Settings) -> None:
-        self.allowed_extensions = settings.allowed_extensions
+        self.allowed_extensions = {ext.lower() for ext in settings.allowed_extensions}
         self.max_file_size_mb = settings.max_file_size_mb
 
     def load(self, file_path: str | Path) -> str:
-        path = Path(file_path)
+        path = Path(file_path).expanduser().resolve()
 
         if not path.exists():
             raise FileLoadError(f"File does not exist: {path}")

@@ -1,4 +1,4 @@
-"""File loader tests."""
+"""File loader tests — Milestone 1.1."""
 
 from __future__ import annotations
 
@@ -30,9 +30,21 @@ class FileLoaderTests(unittest.TestCase):
             content = self.loader.load(log_file)
             self.assertEqual(content, "plain log line\n")
 
+    def test_load_accepts_string_and_path(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            log_file = Path(tmp_dir) / "app.log"
+            log_file.write_text("line\n", encoding="utf-8")
+            self.assertEqual(self.loader.load(str(log_file)), "line\n")
+            self.assertEqual(self.loader.load(log_file), "line\n")
+
     def test_missing_file_raises(self) -> None:
         with self.assertRaises(FileLoadError):
             self.loader.load("/tmp/does-not-exist-opspilot.log")
+
+    def test_directory_path_raises(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            with self.assertRaises(FileLoadError):
+                self.loader.load(tmp_dir)
 
     def test_unsupported_extension_raises(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:
@@ -55,9 +67,23 @@ class FileLoaderTests(unittest.TestCase):
             content = self.loader.load(log_file)
             self.assertIn("café", content)
 
+    def test_invalid_utf8_is_replaced(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            log_file = Path(tmp_dir) / "binary.log"
+            log_file.write_bytes(b"INFO ok \xff\xfe\n")
+            content = self.loader.load(log_file)
+            self.assertIn("INFO ok", content)
+
     def test_oversized_file_raises(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:
             log_file = Path(tmp_dir) / "huge.log"
             log_file.write_bytes(b"x" * (2 * 1024 * 1024))
             with self.assertRaises(FileLoadError):
                 self.loader.load(log_file)
+
+    def test_extension_check_is_case_insensitive(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            log_file = Path(tmp_dir) / "app.LOG"
+            log_file.write_text("uppercase ext\n", encoding="utf-8")
+            content = self.loader.load(log_file)
+            self.assertEqual(content, "uppercase ext\n")
