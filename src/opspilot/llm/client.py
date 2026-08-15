@@ -10,9 +10,9 @@ import urllib.request
 from abc import ABC, abstractmethod
 from typing import Any
 
-from opspilot.config import Settings
 from opspilot.exceptions import LLMError
 from opspilot.llm.prompts import LOG_ANALYSIS_SYSTEM_PROMPT
+from opspilot.llm.providers import ResolvedProviderConfig
 
 logger = logging.getLogger(__name__)
 
@@ -47,27 +47,30 @@ class LLMClient(ABC):
 class OpenAICompatibleLLMClient(LLMClient):
     """OpenAI-compatible chat completions client."""
 
-    def __init__(self, settings: Settings, model: str | None = None) -> None:
-        self.api_key = settings.openai_api_key
-        self.model = model or settings.llm_model
-        self.base_url = settings.llm_base_url.rstrip("/")
-        self.temperature = settings.llm_temperature
-        self.timeout_seconds = settings.llm_timeout_seconds
+    def __init__(self, config: ResolvedProviderConfig) -> None:
+        self.provider = config.provider
+        self.api_key = config.api_key
+        self.model = config.model
+        self.base_url = config.base_url.rstrip("/")
+        self.temperature = config.temperature
+        self.timeout_seconds = config.timeout_seconds
+        self.supports_json_response_format = config.supports_json_response_format
         self.system_prompt = LOG_ANALYSIS_SYSTEM_PROMPT
 
     def generate(self, prompt: str) -> str:
         if not self.api_key:
-            raise LLMError("OPENAI_API_KEY is not configured.")
+            raise LLMError(f"{self.provider} API key is not configured.")
 
-        payload = {
+        payload: dict[str, Any] = {
             "model": self.model,
             "messages": [
                 {"role": "system", "content": self.system_prompt},
                 {"role": "user", "content": prompt},
             ],
             "temperature": self.temperature,
-            "response_format": {"type": "json_object"},
         }
+        if self.supports_json_response_format:
+            payload["response_format"] = {"type": "json_object"}
 
         request = urllib.request.Request(
             f"{self.base_url}/chat/completions",
