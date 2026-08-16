@@ -8,6 +8,7 @@ from opspilot.analyzers.static_fallback_analyzer import StaticFallbackAnalyzer
 from opspilot.config import Settings, get_settings
 from opspilot.evidence.builder import EvidenceBuilder
 from opspilot.llm.client import OpenAICompatibleLLMClient
+from opspilot.llm.providers import resolve_provider_config
 from opspilot.loaders.file_loader import FileLoader
 from opspilot.parsers.log_parser import LogParser
 
@@ -16,6 +17,8 @@ def build_log_analysis_agent(
     settings: Settings | None = None,
     disable_llm: bool = False,
     model_name: str | None = None,
+    provider: str | None = None,
+    base_url: str | None = None,
 ) -> LogAnalysisAgent:
     """Construct a fully wired log analysis agent from settings."""
     resolved_settings = settings or get_settings()
@@ -27,9 +30,16 @@ def build_log_analysis_agent(
 
     llm_analyzer = None
     enable_llm = not disable_llm
-    if enable_llm and resolved_settings.openai_api_key:
-        llm_client = OpenAICompatibleLLMClient(resolved_settings, model=model_name)
-        llm_analyzer = LLMAnalyzer(llm_client)
+    if enable_llm:
+        provider_config = resolve_provider_config(
+            resolved_settings,
+            provider=provider,
+            model=model_name,
+            base_url=base_url,
+        )
+        if provider_config:
+            llm_client = OpenAICompatibleLLMClient(provider_config)
+            llm_analyzer = LLMAnalyzer(llm_client)
 
     return LogAnalysisAgent(
         file_loader=file_loader,

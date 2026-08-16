@@ -8,6 +8,7 @@ import sys
 from opspilot import __version__
 from opspilot.exceptions import OpsPilotError
 from opspilot.factory import build_log_analysis_agent
+from opspilot.llm.providers import SUPPORTED_PROVIDERS
 from opspilot.logging import configure_logging
 
 logger = logging.getLogger(__name__)
@@ -19,7 +20,18 @@ def build_parser() -> argparse.ArgumentParser:
         description="Analyze a single log file with an LLM-first on-call agent.",
     )
     parser.add_argument("file_path", help="Path to the .log or .txt file to analyze.")
-    parser.add_argument("--model", default=None, help="LLM model name when OPENAI_API_KEY is set.")
+    parser.add_argument(
+        "--provider",
+        choices=SUPPORTED_PROVIDERS,
+        default=None,
+        help="LLM provider for this run (default: OPSPILOT_LLM_PROVIDER or openai).",
+    )
+    parser.add_argument("--model", default=None, help="LLM model name override for this run.")
+    parser.add_argument(
+        "--base-url",
+        default=None,
+        help="Override LLM base URL (useful with --provider custom).",
+    )
     parser.add_argument(
         "--llm-off",
         action="store_true",
@@ -39,7 +51,12 @@ def main(argv: list[str] | None = None) -> int:
     configure_logging("DEBUG" if args.verbose else "INFO")
 
     try:
-        agent = build_log_analysis_agent(disable_llm=args.llm_off, model_name=args.model)
+        agent = build_log_analysis_agent(
+            disable_llm=args.llm_off,
+            model_name=args.model,
+            provider=args.provider,
+            base_url=args.base_url,
+        )
         result = agent.analyze_file(args.file_path)
         print(json.dumps(result.to_output_dict(), indent=2, default=str))
         return 0

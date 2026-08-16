@@ -23,13 +23,41 @@ class Settings(BaseSettings):
     max_evidence_lines: int = 500
     max_level_evidence_lines: int = 150
 
+    llm_provider: str = "openai"
     llm_model: str = "gpt-4o-mini"
     llm_temperature: float = 0.2
     llm_timeout_seconds: int = 120
-    llm_base_url: str = "https://api.openai.com/v1"
+    llm_base_url: str | None = None
     openai_api_key: str | None = Field(
         default=None,
         validation_alias=AliasChoices("OPENAI_API_KEY", "OPSPILOT_OPENAI_API_KEY"),
+    )
+    gemini_api_key: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices(
+            "GEMINI_API_KEY",
+            "GOOGLE_API_KEY",
+            "OPSPILOT_GEMINI_API_KEY",
+        ),
+    )
+    grok_api_key: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices(
+            "XAI_API_KEY",
+            "GROK_API_KEY",
+            "OPSPILOT_GROK_API_KEY",
+        ),
+    )
+    groq_api_key: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices(
+            "GROQ_API_KEY",
+            "OPSPILOT_GROQ_API_KEY",
+        ),
+    )
+    llm_api_key: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("OPSPILOT_LLM_API_KEY"),
     )
 
     log_level: str = "INFO"
